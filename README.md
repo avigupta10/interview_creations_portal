@@ -1,9 +1,5 @@
 # interview_creations_portal
 
-# Try It
-
-https://flexmoney-yoga-form.herokuapp.com/
-
 ## Setup Instructions
 
 ### Clone this repo
