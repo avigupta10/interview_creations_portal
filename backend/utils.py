@@ -13,5 +13,5 @@ def collide(can_id, int_id, cur_start, cur_end):
         Inte = Inte[0]
     if (Inte.start_time < cur_start.time() < Inte.end_time) or (Inte.start_time < cur_end.time() < Inte.end_time) or (
             cur_start.time() <= Inte.start_time and cur_end.time() >= Inte.end_time):
-        return True
-    return False
+        return False
+    return True
