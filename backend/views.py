@@ -4,10 +4,9 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import *
-from .utils import *
 # Create your views here.
 from .serializers import InterviewSerializer
+from .utils import *
 
 
 @api_view(['GET'])
@@ -48,22 +47,25 @@ class ScheduleInterview(APIView):
             except Interviewer.DoesNotExist:
                 return Response({'error': 'No Such User Exist'}, status=status.HTTP_400_BAD_REQUEST)
 
-            resume = request.FILES['resume']
-            start_date = serializer.data.get('start_date')
-            end_date = serializer.data.get('end_date')
+            resume = request.FILES.get('resume')
+            date = serializer.data.get('date')
             start_time = serializer.data.get('start_time')
             end_time = serializer.data.get('end_time')
-            if collide(candidate_id, interviewer_id, start_time,end_time):
+            if not collide(candidate_id, interviewer_id, start_time, end_time):
                 form, created = Interview.objects.update_or_create(candidate_name=candidate_name,
                                                                    interviewer_name=interviewer_name,
                                                                    resume=resume,
-                                                                   start_date=start_date,
-                                                                   end_date=end_date,
+                                                                   date=date,
                                                                    start_time=start_time,
                                                                    end_time=end_time,
                                                                    )
+
+                send_confirmation(candidate_name.name, interviewer_name.name, start_time, end_time, date,
+                                  [candidate_name.email, interviewer_name.email])
+
                 return Response(InterviewSerializer(form).data, status=status.HTTP_201_CREATED)
-            return Response({'error': 'Age should be above 18 and below 65'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Candidate and interviewer is already booked for this time range'},
+                            status=status.HTTP_400_BAD_REQUEST)
         print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -106,17 +108,25 @@ class ReScheduleInterview(APIView):
                 obj.candidate_name = candidate_name
                 obj.interviewer_name = interviewer_name
                 obj.resume = request.FILES['resume']
-                obj.start_date = serializer.data.get('start_date')
-                obj.end_date = serializer.data.get('end_date')
+                obj.date = serializer.data.get('date')
                 obj.start_time = serializer.data.get('start_time')
                 obj.end_time = serializer.data.get('end_time')
-                obj.save(update_fields=['candidate_name',
-                                        'interviewer_name',
-                                        'resume',
-                                        'start_date',
-                                        'end_date',
-                                        'start_time',
-                                        'end_time', ])
-                return Response(InterviewSerializer(obj).data, status=status.HTTP_200_OK)
+                if not collide(candidate_id, interviewer_id, serializer.data.get('start_time'),
+                               serializer.data.get('end_time')):
+                    obj.save(update_fields=['candidate_name',
+                                            'interviewer_name',
+                                            'resume',
+                                            'date',
+                                            'start_time',
+                                            'end_time', ])
+
+                    send_confirmation(candidate_name.name, interviewer_name.name, serializer.data.get('start_time'),
+                                      serializer.data.get('end_time'), serializer.data.get('date'),
+                                      [candidate_name.email, interviewer_name.email])
+
+                    return Response(InterviewSerializer(obj).data, status=status.HTTP_200_OK)
+                return Response({'error': 'Candidate and interviewer is already booked for this time range'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
             print(serializer.errors)
             return Response({'error': 'Invalid Data'}, status=status.HTTP_400_BAD_REQUEST)
